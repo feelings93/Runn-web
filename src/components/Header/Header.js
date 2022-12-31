@@ -31,50 +31,10 @@ const Header = () => {
   const router = useRouter();
   const { open: openConnectModal } = useWeb3Modal();
   const { isConnected, address } = useAccount();
-  const [balance, setBalance] = useState(0);
+  const { data, isError, isLoading } = useBalance({ address, watch: true });
   const { disconnect } = useDisconnect();
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
-
-  useEffect(() => {
-    const getBalance = async () => {
-      const resp = await fetch(
-        `https://api.tatum.io/v3/ethereum/account/balance/${address}`,
-        {
-          method: 'GET',
-          headers: {
-            'x-api-key': 'f2ba97db-714c-49c8-89a0-d4d3f2213c47',
-          },
-        }
-      );
-      const data = await resp.json();
-
-      setBalance(data?.balance);
-    };
-    if (address) getBalance();
-  }, [address]);
-
-  useEffect(() => {
-    const getNfts = async () => {
-      const chain = EvmChain.SEPOLIA;
-
-      const response = await Moralis.EvmApi.nft.getWalletNFTs({
-        address: '0x71c738B1d24368DdcE9b1Ec14C8dA57F5E079175',
-        chain,
-        tokenAddresses: ['0xd62B0BeAd0c94F3139787829AE1829b5CaC0d6e5'],
-      });
-
-      console.log(response);
-    };
-    if (address) {
-      getNfts();
-    }
-  }, [address]);
-
-  // const data = {
-  //   formatted: 2.5,
-  //   symbol: 'ETH',
-  // };
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -104,8 +64,8 @@ const Header = () => {
     alert('copy: ' + address);
   };
 
-  // if (isLoading) return <Typography>Fetching balance…</Typography>;
-  // if (isError) return <Typography>Error fetching balance</Typography>;
+  if (isLoading) return <Typography>Fetching balance…</Typography>;
+  if (isError) return <Typography>Error fetching balance</Typography>;
 
   return (
     <Stack
@@ -140,7 +100,9 @@ const Header = () => {
                   color='#fff'
                   alt='eth'
                 />
-                <Typography>{`${formatDisplayingETH(balance)} ETH`}</Typography>
+                <Typography>
+                  {formatDisplayingETH(data?.formatted)} {data?.symbol}
+                </Typography>
               </Stack>
               <Stack direction='row' alignItems='center'>
                 <Typography fontSize={12} color='text.secondary'>

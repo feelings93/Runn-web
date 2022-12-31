@@ -1,10 +1,24 @@
-import { Button, Grid, Stack, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogContent,
+  Grid,
+  Stack,
+  Typography,
+} from '@mui/material';
 import { Contract, ethers } from 'ethers';
 import { useRouter } from 'next/router';
 import React, { useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-toastify';
 import { useAccount } from 'wagmi';
 import Filters from '../components/Marketplace/Filters/Filters';
 import SneakerCard from '../components/UI/SneakerCard/SneakerCard';
+import {
+  RunnMarketplaceAddress,
+  RunnSneakerAddress,
+} from '../constants/contractAddress';
 import { RunnMarketplaceABI } from '../constants/RunnMarketplaceABI';
 import { RunnSneakerABI } from '../constants/RunnSneakerABI';
 import { mapTokenDataToSneakerInDetail } from '../utils/formatTokenData';
@@ -42,6 +56,7 @@ const Marketplace = (props) => {
   const router = useRouter();
   const [sneakers, setSneakers] = useState([]);
   const [showMine, setShowMine] = useState(false);
+  const [isMining, setIsMining] = useState(false);
   const { address } = useAccount();
   const [filter, setFilter] = useState(defaultFilter);
 
@@ -56,18 +71,18 @@ const Marketplace = (props) => {
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner();
         const marketplaceContract = new Contract(
-          '0xb8f25b2ed468d2144B2Dcf75D5db7400728AE4e2',
+          RunnMarketplaceAddress,
           RunnMarketplaceABI,
           signer
         );
         const nftContract = new Contract(
-          '0x4a30Cf2843f8075e6aa92e867c38E8308bA7b998',
+          RunnSneakerAddress,
           RunnSneakerABI,
           signer
         );
         const res =
           await marketplaceContract.functions.sellInfoActiveByContract(
-            '0x4a30Cf2843f8075e6aa92e867c38E8308bA7b998'
+            RunnSneakerAddress
           );
         const allSellInfos = res[0];
 
@@ -87,7 +102,7 @@ const Marketplace = (props) => {
         setSneakers(resultSneakers);
       }
     } catch (err) {
-      console.log(err);
+      toast(err);
     }
   };
 
@@ -102,17 +117,20 @@ const Marketplace = (props) => {
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner();
         const marketplaceContract = new Contract(
-          '0xb8f25b2ed468d2144B2Dcf75D5db7400728AE4e2',
+          RunnMarketplaceAddress,
           RunnMarketplaceABI,
           signer
         );
         const tx = await marketplaceContract.cancel(id);
+        setIsMining(true);
         await tx.wait();
-        alert('huy thanh cong');
+        setIsMining(false);
+        toast('You have cancelled sale successfully');
         window.location.reload();
       }
     } catch (err) {
-      console.log(err);
+      toast(err);
+      setIsMining(false);
     }
   };
 
@@ -266,6 +284,14 @@ const Marketplace = (props) => {
           )}
         </Grid>
       </Grid>
+      <Dialog open={isMining}>
+        <DialogContent>
+          <Stack alignItems='center' spacing={2}>
+            <Typography variant='h6'>Transaction is mining</Typography>
+            <CircularProgress />
+          </Stack>
+        </DialogContent>
+      </Dialog>
     </Stack>
   );
 };

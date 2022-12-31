@@ -1,5 +1,6 @@
 import {
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -14,9 +15,14 @@ import { BigNumber, Contract, ethers } from 'ethers';
 import { parseUnits } from 'ethers/lib/utils.js';
 import { useRouter } from 'next/router';
 import React, { useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-toastify';
 import { useAccount, useContractRead } from 'wagmi';
 import Filters from '../components/Inventory/Filters/Filters';
 import SneakerCard from '../components/UI/SneakerCard/SneakerCard';
+import {
+  RunnMarketplaceAddress,
+  RunnSneakerAddress,
+} from '../constants/contractAddress';
 import { RunnMarketplaceABI } from '../constants/RunnMarketplaceABI';
 import { RunnSneakerABI } from '../constants/RunnSneakerABI';
 import { mapTokenDataToSneaker } from '../utils/formatTokenData';
@@ -51,19 +57,39 @@ const Inventory = (props) => {
   const [sneakers, setSneakers] = useState([]);
   const [filter, setFilter] = useState(defaultFilter);
   const [showApprovalForm, setShowApprovalForm] = useState(false);
+  const [isMining, setIsMining] = useState(false);
   const [price, setPrice] = useState('');
   const [showSellForm, setShowSellForm] = useState(false);
   const [selectSneaker, setSelectedSneaker] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
-    fetchAllSneakers();
+    if (address) fetchAllSneakers();
   }, [address]);
 
   const handleClickSneaker = (id) => {
     router.push(`sneaker/${id}?from=inventory`);
   };
 
+  const handleClickSell = async (sneaker) => {
+    try {
+      const { ethereum } = window;
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const nftContract = new Contract(
+          RunnSneakerAddress,
+          RunnSneakerABI,
+          signer
+        );
+        const res = await nftContract.functions.getApproved(sneaker.id);
+        if (res?.includes(RunnMarketplaceAddress)) handleShowSellForm(sneaker);
+        else handleShowApprovalForm(sneaker);
+      }
+    } catch (err) {
+      toast(err);
+    }
+  };
   const handleShowApprovalForm = (sneaker) => {
     setShowApprovalForm(true);
     setSelectedSneaker(sneaker);
@@ -99,22 +125,26 @@ const Inventory = (props) => {
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner();
         const nftContract = new Contract(
-          '0x4a30Cf2843f8075e6aa92e867c38E8308bA7b998',
+          RunnSneakerAddress,
           RunnSneakerABI,
           signer
         );
         const tx = await nftContract.approve(
-          '0xb8f25b2ed468d2144B2Dcf75D5db7400728AE4e2',
+          RunnMarketplaceAddress,
           selectSneaker.id
         );
+        setIsMining(true);
+
         await tx.wait();
-        alert('approve thanh cong');
+        setIsMining(false);
+        toast('You have approved NFT for this marketplace successfully');
         handleHideApprovalForm();
         handleShowSellForm({ ...selectSneaker });
-        // window.location.reload();
       }
     } catch (err) {
       alert(err);
+      toast(err);
+      setIsMining(false);
     }
   };
 
@@ -125,25 +155,28 @@ const Inventory = (props) => {
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner();
         const marketplaceContract = new Contract(
-          '0xb8f25b2ed468d2144B2Dcf75D5db7400728AE4e2',
+          RunnMarketplaceAddress,
           RunnMarketplaceABI,
           signer
         );
-        console.log(parseUnits);
         const tx = await marketplaceContract.sell(
-          '0x4a30Cf2843f8075e6aa92e867c38E8308bA7b998',
+          RunnSneakerAddress,
           selectSneaker.id,
           parseUnits(price)
         );
+        setIsMining(true);
+
         await tx.wait();
 
-        alert('len san thanh cong');
+        toast('Your NFT has been upload on marketplace successfully!');
         handleHideSellForm();
+        setIsMining(false);
 
         router.push('/marketplace');
       }
     } catch (err) {
-      alert(err);
+      toast(err);
+      setIsMining(false);
     }
   };
 
@@ -154,19 +187,22 @@ const Inventory = (props) => {
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner();
         const nftContract = new Contract(
-          '0x4a30Cf2843f8075e6aa92e867c38E8308bA7b998',
+          RunnSneakerAddress,
           RunnSneakerABI,
           signer
         );
         const res = await nftContract.functions.tokenInfosByOwner(address);
+        console.log(res);
         const allTokensData = res[0];
         const formattedSneakers = allTokensData?.map((tokenData) => {
           return mapTokenDataToSneaker(tokenData);
         });
+        console.log(formattedSneakers);
         setSneakers(formattedSneakers);
+        console.log(res);
       }
     } catch (err) {
-      console.log(err);
+      toast(err);
     }
   };
 
@@ -270,7 +306,7 @@ const Inventory = (props) => {
                     handleClickSneaker(sneaker.id);
                   }}
                   onClickSell={() => {
-                    handleShowApprovalForm(sneaker);
+                    handleClickSell(sneaker);
                   }}
                 />
               </Grid>
@@ -314,6 +350,14 @@ const Inventory = (props) => {
             Sell
           </Button>
         </DialogActions>
+      </Dialog>
+      <Dialog open={isMining}>
+        <DialogContent>
+          <Stack alignItems='center' spacing={2}>
+            <Typography variant='h6'>Transaction is mining</Typography>
+            <CircularProgress />
+          </Stack>
+        </DialogContent>
       </Dialog>
     </>
   );

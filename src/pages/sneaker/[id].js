@@ -9,6 +9,9 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
+  Dialog,
+  DialogContent,
   Divider,
   Fab,
   Grid,
@@ -26,7 +29,12 @@ import { formatUnits, parseEther } from 'ethers/lib/utils.js';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import React, { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import { useAccount } from 'wagmi';
+import {
+  RunnMarketplaceAddress,
+  RunnSneakerAddress,
+} from '../../constants/contractAddress';
 import { RunnMarketplaceABI } from '../../constants/RunnMarketplaceABI';
 import { RunnSneakerABI } from '../../constants/RunnSneakerABI';
 import {
@@ -53,6 +61,7 @@ const DetailSneaker = (props) => {
   const { open: openConnectModal } = useWeb3Modal();
   const { isConnected, address } = useAccount();
   const [sneaker, setSneaker] = useState(null);
+  const [isMining, setIsMining] = useState(false);
   const { id, from = 'marketplace' } = router.query;
   const buyable = from === 'marketplace' || from === '';
 
@@ -67,21 +76,22 @@ const DetailSneaker = (props) => {
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner();
         const nftContract = new Contract(
-          '0x4a30Cf2843f8075e6aa92e867c38E8308bA7b998',
+          RunnSneakerAddress,
           RunnSneakerABI,
           signer
         );
         const marketplaceContract = new Contract(
-          '0xb8f25b2ed468d2144B2Dcf75D5db7400728AE4e2',
+          RunnMarketplaceAddress,
           RunnMarketplaceABI,
           signer
         );
         const tokenData = await nftContract.tokenData(id);
         const sellId = await marketplaceContract.sellIdByToken(
-          '0x4a30Cf2843f8075e6aa92e867c38E8308bA7b998',
+          RunnSneakerAddress,
           id
         );
         const sellInfo = await marketplaceContract.sellInfo(sellId);
+        console.log(sellInfo);
         const { seller, price, active } = sellInfo;
         const formattedSneaker = mapTokenDataToSneakerInDetail(tokenData);
 
@@ -95,9 +105,11 @@ const DetailSneaker = (props) => {
         });
       }
     } catch (err) {
-      console.log(err);
+      toast(err);
     }
   };
+
+  console.log(sneaker);
 
   const handleBuySneaker = async () => {
     try {
@@ -106,21 +118,22 @@ const DetailSneaker = (props) => {
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner();
         const marketplaceContract = new Contract(
-          '0xb8f25b2ed468d2144B2Dcf75D5db7400728AE4e2',
+          RunnMarketplaceAddress,
           RunnMarketplaceABI,
           signer
         );
         const tx = await marketplaceContract.buy(sneaker.saleId, {
           value: parseEther(formatUnits(sneaker.price)),
         });
+        setIsMining(true);
         await tx.wait();
 
-        alert('mua thanh cong');
+        toast('You have bought this NFT successfully!');
 
         router.push('/inventory');
       }
     } catch (err) {
-      alert(err);
+      toast(err);
     }
   };
 
@@ -150,7 +163,7 @@ const DetailSneaker = (props) => {
             <Image
               alt='sneaker'
               fill
-              src='https://go.amazy.io/images/sneakers/common/hiker/00692.png'
+              src={sneaker.imgUrl}
               style={{
                 objectFit: 'contain',
               }}
@@ -381,6 +394,14 @@ const DetailSneaker = (props) => {
           </Grid>
         </Box>
       </Grid>
+      <Dialog open={isMining}>
+        <DialogContent>
+          <Stack alignItems='center' spacing={2}>
+            <Typography variant='h6'>Transaction is mining</Typography>
+            <CircularProgress />
+          </Stack>
+        </DialogContent>
+      </Dialog>
     </Grid>
   );
 };

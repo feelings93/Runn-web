@@ -101,7 +101,7 @@ const SneakerCard = (props) => {
           <Image
             alt='sneaker'
             fill
-            src='https://go.amazy.io/images/sneakers/common/hiker/00692.png'
+            src={sneaker.imgUrl}
             style={{
               objectFit: 'contain',
             }}

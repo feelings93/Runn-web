@@ -10,6 +10,7 @@ export const mapTokenDataToSneaker = (tokenData) => {
     condition,
     mint,
     parents,
+    imgUrl,
   } = jsonInfo;
   return {
     level,
@@ -22,6 +23,7 @@ export const mapTokenDataToSneaker = (tokenData) => {
     condition,
     mint,
     parents,
+    imgUrl,
   };
 };
 
@@ -37,6 +39,7 @@ export const mapTokenDataToSneakerInDetail = (tokenData) => {
     condition,
     mint,
     parents,
+    imgUrl,
   } = jsonInfo;
   return {
     level: _level,
@@ -48,5 +51,6 @@ export const mapTokenDataToSneakerInDetail = (tokenData) => {
     condition,
     mint,
     parents,
+    imgUrl,
   };
 };
